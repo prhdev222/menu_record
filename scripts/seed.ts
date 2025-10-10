@@ -1,4 +1,4 @@
-import { kv } from '@vercel/kv';
+import { kv } from '../src/lib/kv';
 import { v4 as uuidv4 } from 'uuid';
 
 const initialWebsites = [
@@ -39,9 +39,16 @@ const initialWebsites = [
 async function seed() {
   try {
     console.log('🌱 Starting seed...');
+    console.log('🔴 Using Upstash Redis');
+    
     await kv.set('websites', initialWebsites);
+    
     console.log('✅ Seed completed successfully!');
-    console.log(`📊 Added ${initialWebsites.length} websites`);
+    console.log(`📊 Added ${initialWebsites.length} websites to Upstash Redis`);
+    
+    // Verify data
+    const check = await kv.get('websites');
+    console.log(`🔍 Verification: ${Array.isArray(check) ? check.length : 0} websites stored`);
   } catch (error) {
     console.error('❌ Seed failed:', error);
     process.exit(1);
@@ -49,5 +56,7 @@ async function seed() {
 }
 
 seed();
+
+
 
 

@@ -1,9 +1,12 @@
-import { kv as vercelKv } from '@vercel/kv';
+import { kv } from '@/lib/kv';
 import type { Website } from '@/lib/types';
 
-// In-memory fallback for local/dev when KV is not configured
-let memoryStore: Website[] | null = null;
+// In-memory cache with TTL
+let memoryCache: Website[] | null = null;
+let cacheTimestamp: number = 0;
+const CACHE_TTL = 60 * 1000; // 60 seconds
 
+// Fallback seed data
 function getFallbackSeed(): Website[] {
   const now = new Date().toISOString();
   return [
@@ -42,33 +45,63 @@ function getFallbackSeed(): Website[] {
   ];
 }
 
-async function useKvAvailable(): Promise<boolean> {
-  try {
-    // Try a harmless read to detect connectivity
-    await vercelKv.get('kv-health-check-ignore');
-    return true;
-  } catch {
-    return false;
-  }
+// Check if cache is still valid
+function isCacheValid(): boolean {
+  return memoryCache !== null && Date.now() - cacheTimestamp < CACHE_TTL;
+}
+
+// Clear cache
+function clearCache(): void {
+  memoryCache = null;
+  cacheTimestamp = 0;
 }
 
 export const store = {
   async getAll(): Promise<Website[]> {
-    if (await useKvAvailable()) {
-      const websites = (await vercelKv.get<Website[]>('websites')) || [];
-      return websites;
+    // Return cached data if valid
+    if (isCacheValid()) {
+      return memoryCache!;
     }
-    if (!memoryStore) memoryStore = getFallbackSeed();
-    return memoryStore;
+
+    try {
+      // Try to get from Upstash Redis
+      const websites = (await kv.get<Website[]>('websites')) || [];
+      
+      // Update cache
+      memoryCache = websites;
+      cacheTimestamp = Date.now();
+      
+      console.log(`[Store] ✅ Fetched ${websites.length} websites from Upstash Redis`);
+      return websites;
+    } catch (error) {
+      console.error('[Store] ❌ Redis Error:', error);
+      // Return fallback data if Redis fails
+      return getFallbackSeed();
+    }
   },
 
   async setAll(websites: Website[]): Promise<void> {
-    if (await useKvAvailable()) {
-      await vercelKv.set('websites', websites);
-      return;
+    try {
+      // Write to Upstash Redis
+      await kv.set('websites', websites);
+      
+      // Update cache immediately
+      memoryCache = websites;
+      cacheTimestamp = Date.now();
+      
+      console.log(`[Store] ✅ Updated ${websites.length} websites in Upstash Redis`);
+    } catch (error) {
+      console.error('[Store] ❌ Redis Set Error:', error);
+      throw error;
     }
-    memoryStore = websites;
+  },
+
+  // Manual cache invalidation
+  invalidateCache(): void {
+    clearCache();
   },
 };
+
+
 
 

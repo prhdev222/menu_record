@@ -3,9 +3,16 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Website } from '@/lib/types';
 import { store } from '@/lib/store';
 
+// Enable caching for GET requests (60 seconds)
+export const revalidate = 60;
+
 export async function GET() {
   const websites = await store.getAll();
-  return NextResponse.json(websites);
+  return NextResponse.json(websites, {
+    headers: {
+      'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120',
+    },
+  });
 }
 
 export async function POST(request: NextRequest) {
