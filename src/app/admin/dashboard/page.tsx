@@ -50,9 +50,14 @@ export default function DashboardPage() {
     await refresh();
   }
 
-  function logout() {
-    localStorage.removeItem('adminLoggedIn');
-    window.location.href = '/';
+  async function logout() {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Logout error:', error);
+      window.location.href = '/';
+    }
   }
 
   return (
@@ -62,8 +67,8 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">Admin Dashboard</h1>
           <div className="flex gap-3">
-            <button onClick={() => setOpen(true)} className="px-4 py-2 rounded-lg bg-primary-500 text-white font-semibold">เพิ่มเว็บไซต์ใหม่</button>
-            <button onClick={logout} className="px-4 py-2 rounded-lg border">Logout</button>
+            <button onClick={() => setOpen(true)} className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold">เพิ่มเว็บไซต์ใหม่</button>
+            <button onClick={logout} className="px-4 py-2 rounded-lg border hover:bg-gray-100">ออกจากระบบ</button>
           </div>
         </div>
 
