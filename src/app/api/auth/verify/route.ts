@@ -10,10 +10,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ authenticated: false }, { status: 401 });
     }
 
+    // ตรวจสอบว่าตั้ง JWT_SECRET หรือยัง
+    const JWT_SECRET = process.env.JWT_SECRET;
+    if (!JWT_SECRET) {
+      console.error('🚨 [Security] JWT_SECRET is not set!');
+      return NextResponse.json({ authenticated: false }, { status: 500 });
+    }
+
     // Verify token
-    const secret = new TextEncoder().encode(
-      process.env.JWT_SECRET || 'default-secret-change-this-in-production'
-    );
+    const secret = new TextEncoder().encode(JWT_SECRET);
 
     try {
       const { payload } = await jwtVerify(token, secret);

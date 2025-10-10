@@ -5,16 +5,27 @@ export async function POST(request: NextRequest) {
   try {
     const { username, password } = await request.json();
 
-    // ดึง credentials จาก environment variables
-    const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-    const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+    // ดึง credentials จาก environment variables (บังคับต้องตั้ง!)
+    const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
+    const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+    const JWT_SECRET = process.env.JWT_SECRET;
+
+    // ตรวจสอบว่าตั้ง Environment Variables หรือยัง
+    if (!ADMIN_USERNAME || !ADMIN_PASSWORD || !JWT_SECRET) {
+      console.error('🚨 [Security] Missing required environment variables!');
+      console.error('ADMIN_USERNAME:', ADMIN_USERNAME ? '✅' : '❌ NOT SET');
+      console.error('ADMIN_PASSWORD:', ADMIN_PASSWORD ? '✅' : '❌ NOT SET');
+      console.error('JWT_SECRET:', JWT_SECRET ? '✅' : '❌ NOT SET');
+      return NextResponse.json(
+        { success: false, message: 'เซิร์ฟเวอร์ไม่ได้ตั้งค่าที่ถูกต้อง กรุณาติดต่อผู้ดูแลระบบ' },
+        { status: 500 }
+      );
+    }
 
     // ตรวจสอบ credentials
     if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
       // สร้าง JWT token
-      const secret = new TextEncoder().encode(
-        process.env.JWT_SECRET || 'default-secret-change-this-in-production'
-      );
+      const secret = new TextEncoder().encode(JWT_SECRET);
 
       const token = await new SignJWT({ username, role: 'admin' })
         .setProtectedHeader({ alg: 'HS256' })
