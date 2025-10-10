@@ -1,3 +1,18 @@
+// Load environment variables FIRST using require
+require('dotenv').config({ path: require('path').resolve(__dirname, '../.env.local') });
+
+// Validate environment variables
+if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
+  console.error('❌ Missing required environment variables!');
+  console.error('KV_REST_API_URL:', process.env.KV_REST_API_URL ? '✅ Set' : '❌ Missing');
+  console.error('KV_REST_API_TOKEN:', process.env.KV_REST_API_TOKEN ? '✅ Set' : '❌ Missing');
+  console.error('\n💡 Please create a .env.local file with:');
+  console.error('KV_REST_API_URL=https://classic-falcon-20399.upstash.io');
+  console.error('KV_REST_API_TOKEN=your-token-here\n');
+  process.exit(1);
+}
+
+// Now import after env vars are loaded
 import { kv } from '../src/lib/kv';
 import { v4 as uuidv4 } from 'uuid';
 
