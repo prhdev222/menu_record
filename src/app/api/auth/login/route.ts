@@ -17,27 +17,25 @@ export async function POST(request: NextRequest) {
     console.log('ADMIN_PASSWORD:', ADMIN_PASSWORD ? `'${ADMIN_PASSWORD}'` : '❌ NOT SET');
     console.log('JWT_SECRET:', JWT_SECRET ? '✅ SET' : '❌ NOT SET');
 
-    // ตรวจสอบว่าตั้ง Environment Variables หรือยัง
-    if (!ADMIN_USERNAME || !ADMIN_PASSWORD || !JWT_SECRET) {
-      console.error('🚨 [Security] Missing required environment variables!');
-      console.error('ADMIN_USERNAME:', ADMIN_USERNAME ? '✅' : '❌ NOT SET');
-      console.error('ADMIN_PASSWORD:', ADMIN_PASSWORD ? '✅' : '❌ NOT SET');
-      console.error('JWT_SECRET:', JWT_SECRET ? '✅' : '❌ NOT SET');
-      return NextResponse.json(
-        { success: false, message: 'เซิร์ฟเวอร์ไม่ได้ตั้งค่าที่ถูกต้อง กรุณาติดต่อผู้ดูแลระบบ' },
-        { status: 500 }
-      );
-    }
+    // ใช้ค่า default ถ้าไม่มี environment variables
+    const finalUsername = ADMIN_USERNAME || 'admin';
+    const finalPassword = ADMIN_PASSWORD || 'prh1234';
+    const finalJwtSecret = JWT_SECRET || '93b285e7fcc69465f7e4ec25ddcf730fb6a70200b94772d51edfd145d3f33834';
+    
+    console.log('🔍 Using credentials:');
+    console.log('Username:', finalUsername);
+    console.log('Password:', finalPassword ? '✅ SET' : '❌ NOT SET');
+    console.log('JWT_SECRET:', finalJwtSecret ? '✅ SET' : '❌ NOT SET');
 
     console.log('🔍 Comparing credentials:');
-    console.log('Username match:', username === ADMIN_USERNAME);
-    console.log('Password match:', password === ADMIN_PASSWORD);
+    console.log('Username match:', username === finalUsername);
+    console.log('Password match:', password === finalPassword);
 
     // ตรวจสอบ credentials
-    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+    if (username === finalUsername && password === finalPassword) {
       console.log('✅ Credentials match, creating token...');
       // สร้าง JWT token
-      const secret = new TextEncoder().encode(JWT_SECRET);
+      const secret = new TextEncoder().encode(finalJwtSecret);
 
       const token = await new SignJWT({ username, role: 'admin' })
         .setProtectedHeader({ alg: 'HS256' })

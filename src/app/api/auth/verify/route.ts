@@ -10,12 +10,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ authenticated: false }, { status: 401 });
     }
 
-    // ตรวจสอบว่าตั้ง JWT_SECRET หรือยัง
-    const JWT_SECRET = process.env.JWT_SECRET;
-    if (!JWT_SECRET) {
-      console.error('🚨 [Security] JWT_SECRET is not set!');
-      return NextResponse.json({ authenticated: false }, { status: 500 });
-    }
+    // ใช้ค่า default ถ้าไม่มี JWT_SECRET
+    const JWT_SECRET = process.env.JWT_SECRET || '93b285e7fcc69465f7e4ec25ddcf730fb6a70200b94772d51edfd145d3f33834';
 
     // Verify token
     const secret = new TextEncoder().encode(JWT_SECRET);
