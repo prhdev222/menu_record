@@ -7,7 +7,7 @@ type Props = {
   open: boolean;
   onClose: () => void;
   initial?: Partial<Website>;
-  onSubmit: (data: Omit<Website, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  onSubmit: (data: Omit<Website, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
 };
 
 export default function WebsiteModal({ open, onClose, initial, onSubmit }: Props) {
@@ -17,6 +17,7 @@ export default function WebsiteModal({ open, onClose, initial, onSubmit }: Props
   const [features, setFeatures] = useState((initial?.features ?? []).join('\n'));
   const [targetGroup, setTargetGroup] = useState(initial?.targetGroup ?? '');
   const [color, setColor] = useState<Website['color']>(initial?.color ?? 'blue');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     setName(initial?.name ?? '');
@@ -29,8 +30,11 @@ export default function WebsiteModal({ open, onClose, initial, onSubmit }: Props
 
   if (!open) return null;
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    console.log('🔵 Submit clicked, form data:', { name, url, description, features, targetGroup, color });
+    setLoading(true);
+
     const payload = {
       name,
       url,
@@ -39,7 +43,20 @@ export default function WebsiteModal({ open, onClose, initial, onSubmit }: Props
       targetGroup,
       color,
     };
-    onSubmit(payload);
+    console.log('🟡 Submitting payload:', payload);
+
+    try {
+      // Call onSubmit and wait for it to complete
+      console.log('🟢 Calling onSubmit...');
+      await onSubmit(payload);
+      console.log('✅ onSubmit completed successfully');
+      onClose();
+    } catch (error) {
+      console.error('❌ Submit failed:', error);
+      alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' + (error as Error).message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -78,8 +95,14 @@ export default function WebsiteModal({ open, onClose, initial, onSubmit }: Props
             </select>
           </div>
           <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border">ยกเลิก</button>
-            <button type="submit" className="px-4 py-2 rounded-lg bg-primary-500 text-white font-semibold">บันทึก</button>
+            <button type="button" onClick={onClose} disabled={loading} className="px-4 py-2 rounded-lg border disabled:opacity-50">ยกเลิก</button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-4 py-2 rounded-lg bg-primary-500 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-600"
+            >
+              {loading ? 'กำลังบันทึก...' : 'บันทึก'}
+            </button>
           </div>
         </form>
       </div>

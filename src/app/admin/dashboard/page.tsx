@@ -5,6 +5,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import Navbar from '@/components/Navbar';
 import WebsiteModal from '@/components/WebsiteModal';
 import type { Website } from '@/lib/types';
+import { store } from '@/lib/store';
 
 export default function DashboardPage() {
   const [websites, setWebsites] = useState<Website[]>([]);
@@ -12,9 +13,13 @@ export default function DashboardPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Website | null>(null);
 
+
   async function refresh() {
     try {
-      const res = await fetch('/api/websites');
+      // Force cache invalidation to get fresh data
+      store.invalidateCache();
+
+      const res = await fetch('/api/websites', { cache: 'no-store' });
       if (!res.ok) {
         setWebsites([]);
         return;
@@ -34,20 +39,84 @@ export default function DashboardPage() {
   }, []);
 
   async function handleCreate(data: Omit<Website, 'id' | 'createdAt' | 'updatedAt'>) {
-    await fetch('/api/websites', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-    setOpen(false);
-    await refresh();
+    try {
+      console.log('🟢 handleCreate called with:', data);
+      const response = await fetch('/api/websites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      console.log('📡 Create API response status:', response.status);
+      const responseData = await response.json();
+      console.log('📡 Create API response data:', responseData);
+
+      if (!response.ok) {
+        console.error('❌ Create failed:', responseData);
+        alert(`เกิดข้อผิดพลาดในการสร้าง: ${responseData.error || 'ไม่ทราบสาเหตุ'}`);
+        throw new Error('Create failed');
+      }
+
+      console.log('✅ Create successful, refreshing data...');
+      // Refresh data
+      await refresh();
+      console.log('✅ Data refreshed, closing modal...');
+      // Close modal after successful operation
+      setOpen(false);
+    } catch (error) {
+      console.error('❌ Create error:', error);
+      throw error; // Re-throw to let modal handle error
+    }
   }
 
   async function handleUpdate(data: Partial<Website> & { id: string }) {
-    await fetch('/api/websites', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-    setEditing(null);
-    await refresh();
+    try {
+      console.log('🟢 handleUpdate called with:', data);
+      const response = await fetch('/api/websites', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      console.log('📡 Update API response status:', response.status);
+      const responseData = await response.json();
+      console.log('📡 Update API response data:', responseData);
+
+      if (!response.ok) {
+        console.error('❌ Update failed:', responseData);
+        alert(`เกิดข้อผิดพลาดในการอัปเดต: ${responseData.error || 'ไม่ทราบสาเหตุ'}`);
+        throw new Error('Update failed');
+      }
+
+      console.log('✅ Update successful, refreshing data...');
+      // Refresh data
+      await refresh();
+      console.log('✅ Data refreshed, clearing editing state...');
+
+      // Clear editing state after successful update
+      setEditing(null);
+    } catch (error) {
+      console.error('❌ Update error:', error);
+      throw error; // Re-throw to let modal handle error
+    }
   }
 
   async function handleDelete(id: string) {
-    await fetch(`/api/websites?id=${id}`, { method: 'DELETE' });
-    await refresh();
+    try {
+      const response = await fetch(`/api/websites?id=${id}`, { method: 'DELETE' });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Delete failed:', errorData);
+        alert(`เกิดข้อผิดพลาดในการลบ: ${errorData.error || 'ไม่ทราบสาเหตุ'}`);
+        return;
+      }
+
+      await refresh();
+    } catch (error) {
+      console.error('Delete error:', error);
+      alert('เกิดข้อผิดพลาดในการลบข้อมูล');
+    }
   }
 
   async function logout() {
@@ -108,7 +177,18 @@ export default function DashboardPage() {
       </div>
 
       <WebsiteModal open={open} onClose={() => setOpen(false)} onSubmit={handleCreate} />
-      <WebsiteModal open={!!editing} onClose={() => setEditing(null)} initial={editing ?? undefined} onSubmit={(data) => handleUpdate({ id: editing!.id, ...data })} />
+      <WebsiteModal
+        open={!!editing}
+        onClose={() => setEditing(null)}
+        initial={editing ?? undefined}
+        onSubmit={async (data) => {
+          if (editing?.id) {
+            await handleUpdate({ id: editing.id, ...data });
+          } else {
+            throw new Error('No editing ID found');
+          }
+        }}
+      />
     </ProtectedRoute>
   );
 }

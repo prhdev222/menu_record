@@ -5,6 +5,9 @@ import WebsiteCard from '@/components/WebsiteCard';
 import Footer from '@/components/Footer';
 import { store } from '@/lib/store';
 
+// Force revalidation every 10 seconds for faster updates
+export const revalidate = 10;
+
 // Loading component
 function WebsiteGridSkeleton() {
   return (

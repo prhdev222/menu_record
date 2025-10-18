@@ -1,26 +1,40 @@
 import { Redis } from '@upstash/redis';
 
-// Lazy initialize Redis client
-let _kv: Redis | null = null;
+// In-memory fallback storage for development/when Redis is not available
+const memoryStorage = new Map<string, any>();
 
-function getKvClient(): Redis {
+// Simple in-memory Redis-like client
+class MemoryRedis {
+  async get<T>(key: string): Promise<T | null> {
+    return memoryStorage.get(key) || null;
+  }
+
+  async set(key: string, value: any): Promise<void> {
+    memoryStorage.set(key, value);
+    console.log(`[MemoryRedis] ✅ Stored ${key} with ${JSON.stringify(value).length} bytes`);
+  }
+
+  async del(key: string): Promise<void> {
+    memoryStorage.delete(key);
+    console.log(`[MemoryRedis] ✅ Deleted ${key}`);
+  }
+}
+
+// Lazy initialize Redis client
+let _kv: Redis | MemoryRedis | null = null;
+
+function getKvClient(): Redis | MemoryRedis {
   if (!_kv) {
-    const url = process.env.KV_REST_API_URL;
-    const token = process.env.KV_REST_API_TOKEN;
+    const url = process.env.KV_REST_API_URL?.trim();
+    const token = process.env.KV_REST_API_TOKEN?.trim();
 
     if (!url || !token) {
-      throw new Error(
-        'Missing Upstash Redis credentials!\n' +
-        'Please set KV_REST_API_URL and KV_REST_API_TOKEN environment variables.\n' +
-        'For local development, create a .env.local file with these values.'
-      );
-    }
-
-    _kv = new Redis({ url, token });
-
-    // Log เพื่อยืนยันว่าเชื่อมต่อแล้ว (เฉพาะ development)
-    if (process.env.NODE_ENV === 'development') {
+      console.warn('⚠️ Missing Upstash Redis credentials! Using in-memory storage.');
+      console.warn('⚠️ Data will be lost on server restart. To persist data, add KV_REST_API_URL and KV_REST_API_TOKEN to your environment variables.');
+      _kv = new MemoryRedis();
+    } else {
       console.log('🔴 Using Upstash Redis:', url);
+      _kv = new Redis({ url, token });
     }
   }
 
@@ -28,7 +42,7 @@ function getKvClient(): Redis {
 }
 
 // Export a Proxy that lazily initializes the Redis client
-export const kv = new Proxy({} as Redis, {
+export const kv = new Proxy({} as Redis | MemoryRedis, {
   get(_target, prop) {
     const client = getKvClient();
     const value = (client as any)[prop];

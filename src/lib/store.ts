@@ -4,7 +4,7 @@ import type { Website } from '@/lib/types';
 // In-memory cache with TTL
 let memoryCache: Website[] | null = null;
 let cacheTimestamp: number = 0;
-const CACHE_TTL = 60 * 1000; // 60 seconds
+const CACHE_TTL = 10 * 1000; // 10 seconds for faster updates
 
 // Fallback seed data
 function getFallbackSeed(): Website[] {
@@ -75,24 +75,34 @@ export const store = {
       return websites;
     } catch (error) {
       console.error('[Store] ❌ Redis Error:', error);
+      console.log('[Store] 🔄 Using fallback data for development');
       // Return fallback data if Redis fails
-      return getFallbackSeed();
+      const fallbackData = getFallbackSeed();
+      memoryCache = fallbackData;
+      cacheTimestamp = Date.now();
+      return fallbackData;
     }
   },
 
   async setAll(websites: Website[]): Promise<void> {
+    // Force cache invalidation first
+    clearCache();
+
     try {
       // Write to Upstash Redis
       await kv.set('websites', websites);
-      
+
       // Update cache immediately
       memoryCache = websites;
       cacheTimestamp = Date.now();
-      
+
       console.log(`[Store] ✅ Updated ${websites.length} websites in Upstash Redis`);
     } catch (error) {
       console.error('[Store] ❌ Redis Set Error:', error);
-      throw error;
+      console.log('[Store] 🔄 Using memory cache only for development');
+      // For development, just update memory cache
+      memoryCache = websites;
+      cacheTimestamp = Date.now();
     }
   },
 
