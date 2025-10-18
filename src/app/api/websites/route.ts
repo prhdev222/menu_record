@@ -4,8 +4,8 @@ import type { Website } from '@/lib/types';
 import { store } from '@/lib/store';
 import { revalidatePath, revalidateTag } from 'next/cache';
 
-// Enable caching for GET requests (10 seconds for faster updates)
-export const revalidate = 10;
+// Static generation - no dynamic server usage
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const websites = await store.getAll();

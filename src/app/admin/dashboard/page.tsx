@@ -16,10 +16,7 @@ export default function DashboardPage() {
 
   async function refresh() {
     try {
-      // Force cache invalidation to get fresh data
-      store.invalidateCache();
-
-      const res = await fetch('/api/websites', { cache: 'no-store' });
+      const res = await fetch('/api/websites');
       if (!res.ok) {
         setWebsites([]);
         return;
